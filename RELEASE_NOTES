@@ -1,0 +1,8 @@
+ Release Notes for the pcieTprDriver package
+---------------------------------------------
+
+R0.1.0   Kukhee Kim (Sep 9, 2021)
+         - initial release
+         - get kernel driver from evr-card-g2/maser
+         - compatible firmware version
+           EvrCardG2-CED2001B-20210726120051-weaver-d381d3e.mcs
