@@ -494,15 +494,18 @@ irqreturn_t tpr_intr(int irq, void *dev_id, struct pt_regs *regs) {
   if ( (stat & 1) != 0 ) {
     // Disable interrupts
     dev->irqCount++;
-    dev->irqDisable++;
+
     if (((struct TprReg*)dev->bar[0].reg)->irqControl==0)
-      dev->irqNoReq++;
+      dev->irqDisable++;
     ((struct TprReg*)dev->bar[0].reg)->irqControl = 0;
     tasklet_schedule(&dev->dma_task);
     handled=1;
   }
-
-  if (handled==0) return(IRQ_NONE);
+  
+  if (handled==0) {
+    dev->irqNoReq++;
+    return(IRQ_NONE);
+  }
 
   return(IRQ_HANDLED);
 }
