@@ -1,6 +1,12 @@
  Release Notes for the pcieTprDriver package
 ---------------------------------------------
 
+R0.2.0   Kukhee Kim (Sep 24, 2021)
+         - bug fix related to interrupt and dma handling
+           . adding volatile for hardware registers
+         - compatible firmware version
+           EvrCardG2-CED2001D-20210916183225-weaver-968bb5f.mcs
+
 R0.1.0   Kukhee Kim (Sep 9, 2021)
          - initial release
          - get kernel driver from evr-card-g2/maser
