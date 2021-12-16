@@ -1,6 +1,9 @@
  Release Notes for the pcieTprDriver package
 ---------------------------------------------
 
+R0.3.0   Matt Weaver (Dec 16, 2021)
+         - fix bug the device file opens fail after 256 previous opens
+
 R0.2.0   Kukhee Kim (Sep 24, 2021)
          - bug fix related to interrupt and dma handling
            . adding volatile for hardware registers
