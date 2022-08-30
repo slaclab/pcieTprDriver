@@ -1,6 +1,9 @@
  Release Notes for the pcieTprDriver package
 ---------------------------------------------
 
+R0.4.0   Kukhee Kim (Aug 29, 2022)
+         - bug fixing for handling/tracking open/close device fils
+
 R0.3.1   Kukhee Kim (March 10, 2022)
          - add firmware image 968bb5f
 
