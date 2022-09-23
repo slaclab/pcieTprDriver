@@ -5,12 +5,9 @@ KVER ?= $(shell uname -r)
 ARCH ?= $(shell uname -m)
 XCROSS_HOME :=
 KERNELDIR := /lib/modules/$(KVER)/build
-#SRCS := $(wildcard *.c)
-#OBJS := $(patsubst %.c,%.o,$(SRCS))
 
 #ccflags-y += -I$(MAKE_HOME)
 
-#$(NAME)-objs := tpr.o
 obj-m        := $(NAME).o
 
 all:
