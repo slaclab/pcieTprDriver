@@ -1,5 +1,6 @@
 BUILDROOT_VER=buildroot-2019.08
 
+MAKE_HOME := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUILDROOT_HOME = /afs/slac/package/linuxRT/$(BUILDROOT_VER)
 ARCH=x86_64
 OUTPUT_DIR=../../buildroot-2019.08-x86_64
@@ -16,18 +17,18 @@ KERNELDIR := $(BUILDROOT_HOME)/buildroot-2019.08-x86_64/output/build/linux-4.14.
 
 all:
 	### copy the sources to make a directory for building
-	cp -r ../../src/* .
-	$(MAKE) compile
+	cp -r ../../src/*.[chs]* .
+	$(MAKE) compile install
 
 # tpr-objs  += 
 
 obj-m += tpr.o
 
 compile:
-	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(XCROSS_HOME) -C $(KERNELDIR) M=$(PWD) modules
+	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(XCROSS_HOME) -C $(KERNELDIR) M=$(MAKE_HOME) modules
 
 clean:
-	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions *.symvers  *.order *.c *.h module_* original.*
+	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions *.symvers  *.order *.c *.h module_* original.* *.sh
  
 install:
 	mkdir -p $(OUTPUT_DIR)/include/
