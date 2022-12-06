@@ -1,5 +1,10 @@
  Release Notes for the pcieTprDriver package
 ---------------------------------------------
+R0.5.1   Bruce Hill (Dec 05, 2022)
+         Rework src/load_module.sh to work in different shells.
+         Add support for building tpr.ko for each kernel module src installed on host.
+         Allow buildroot to build and install from TOP level make.
+
 R0.5.0   Kukhee Kim (Aug 31, 2022)
          - add CPU timestamp count into the timing queue entry
          - pick-up changes from the GitHub and merge it
