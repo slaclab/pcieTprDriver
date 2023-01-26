@@ -4,6 +4,7 @@ O.*
 *.swp
 *.o
 *.ko
+tpr.mod.c
 .tmp_versions/
 Module.symvers
 modules.order
@@ -11,7 +12,6 @@ modules.order
 build/buildroot-2019.08-x86_64/load_module.sh
 build/buildroot-2019.08-x86_64/tpr.c
 build/buildroot-2019.08-x86_64/tpr.h
-build/buildroot-2019.08-x86_64/tpr.mod.c
 build/buildroot-2019.08-x86_64/unload_module.sh
 buildroot-2019.08-x86_64/unload_module.sh
 buildroot-2019.08-x86_64/include/tpr.h
