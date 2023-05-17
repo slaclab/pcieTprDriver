@@ -1,6 +1,5 @@
 #!/bin/sh
 
-rmmod -s evr_device.ko
 rmmod -s tpr.ko
 insmod tpr.ko
 
