@@ -35,6 +35,7 @@
 #include <asm/atomic.h>
 #include <linux/cdev.h>
 #include <linux/vmalloc.h>
+#include <linux/version.h>
 #include "tpr.h"
 
 #undef TPRDEBUG
@@ -44,6 +45,10 @@
 #ifdef TPRDEBUG
 #undef KERN_WARNING
 #define KERN_WARNING KERN_ALERT
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+#define HAVE_UNLOCKED_IOCTL
 #endif
 
 #ifndef SA_SHIRQ
@@ -81,9 +86,15 @@ void    tpr_vmclose  (struct vm_area_struct *vma);
 
 // vm_operations_struct.fault callback function has a different signature
 // starting at kernel version 4.11. In this new version the struct vm_area_struct
-// in defined as part of the struct vm_fault.
+// in defined as part of the struct vm_fault. Starting in kernel 4.17, the return
+// type was also changed to vm_fault_t.
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
-int     tpr_vmfault  (struct vm_fault *vmf);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,17,0)
+int
+#else
+vm_fault_t
+#endif
+tpr_vmfault  (struct vm_fault *vmf);
 #else
 int     tpr_vmfault  (struct vm_area_struct *vma, struct vm_fault *vmf);
 #endif
@@ -114,29 +125,29 @@ static struct pci_driver tprDriver = {
 
 // Define interface routines
 struct file_operations tpr_intf = {
-   read:    tpr_read,
-   write:   tpr_write,
+   .read        = tpr_read,
+   .write       = tpr_write,
 #ifdef HAVE_UNLOCKED_IOCTL
-   unlocked_ioctl: tpr_unlocked_ioctl,
+   .unlocked_ioctl = tpr_unlocked_ioctl,
 #else
-   ioctl:   tpr_ioctl,
+   .ioctl       = tpr_ioctl,
 #endif
 #ifdef CONFIG_COMPAT
-  compat_ioctl: tpr_compat_ioctl,
+  .compat_ioctl = tpr_compat_ioctl,
 #endif
 
-   open:    tpr_open,
-   release: tpr_release,
-   poll:    tpr_poll,
-   fasync:  tpr_fasync,
-   mmap:    tpr_mmap,
+   .open        = tpr_open,
+   .release     = tpr_release,
+   .poll        = tpr_poll,
+   .fasync      = tpr_fasync,
+   .mmap        = tpr_mmap,
 };
 
 // Virtual memory operations
 static struct vm_operations_struct tpr_vmops = {
-  open:  tpr_vmopen,
-  close: tpr_vmclose,
-  fault: tpr_vmfault
+  .open  = tpr_vmopen,
+  .close = tpr_vmclose,
+  .fault = tpr_vmfault
 };
 
 static int allocBar(struct bar_dev* minor, int major, struct pci_dev* dev, int bar);
@@ -858,7 +869,12 @@ void tpr_vmclose(struct vm_area_struct *vma)
 // starting at kernel version 4.11. In this new version the struct vm_area_struct
 // in defined as part of the struct vm_fault.
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
-int tpr_vmfault(struct vm_fault* vmf)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,17,0)
+int 
+#else
+vm_fault_t
+#endif
+tpr_vmfault(struct vm_fault* vmf)
 #else
 int tpr_vmfault(struct vm_area_struct* vma,
                 struct vm_fault* vmf)
@@ -899,7 +915,11 @@ int allocBar(struct bar_dev* minor, int major, struct pci_dev* pcidev, int bar)
 	  MOD_NAME, bar, major);
 
    // Remap the I/O register block so that it can be safely accessed.
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,5,0)
    minor->reg = ioremap_nocache(minor->baseHdwr, minor->baseLen);
+#else
+   minor->reg = ioremap(minor->baseHdwr, minor->baseLen);
+#endif
    if (! minor->reg ) {
      printk(KERN_WARNING "%s: Init: Could not remap memory Maj=%i.\n", MOD_NAME,major);
      return (ERROR);
