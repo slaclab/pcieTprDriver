@@ -1,8 +1,8 @@
 # 
 MAKE_HOME := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 ARCH ?= arm
-LOC_VERS := $(wildcard /lib/modules/*/build)
-LOC_VERS := $(patsubst %/,%,$(dir $(LOC_VERS)))
+LOC_VERS := $(wildcard /lib/modules/*/build/Makefile)
+LOC_VERS := $(patsubst %/build/,%,$(dir $(LOC_VERS)))
 LOC_VERS := $(notdir $(LOC_VERS))
 
 all: 
