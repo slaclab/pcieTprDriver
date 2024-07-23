@@ -1,7 +1,15 @@
 BUILDROOT_VER=buildroot-2019.08
 
+ifeq ($(PACKAGE_TOP),)
+ifneq ($(EPICS_PACKAGE_TOP),)
+	PACKAGE_TOP=$(EPICS_PACKAGE_TOP)
+else
+	$(error PACKAGE_TOP or EPICS_PACKAGE_TOP must be provided by the environment or on the command line)
+endif
+endif
+
 MAKE_HOME := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-BUILDROOT_HOME = /afs/slac/package/linuxRT/$(BUILDROOT_VER)
+BUILDROOT_HOME = $(PACKAGE_TOP)/linuxRT/$(BUILDROOT_VER)
 ARCH=x86_64
 OUTPUT_DIR=../../buildroot-2019.08-x86_64
 
