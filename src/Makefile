@@ -6,11 +6,21 @@ ARCH ?= $(shell uname -m)
 XCROSS_HOME :=
 KERNELDIR := /lib/modules/$(KVER)/build
 
+ifndef GITV
+    GITT := $(shell cd $(HOME); git describe --tags)
+    GITD := $(shell cd $(HOME); git status --short -uno | wc -l)
+    GITV := $(if $(filter $(GITD),0),$(GITT),$(GITT)-dirty)
+endif
+
+ccflags-y += -DGITV=\"$(GITV)\"
+
+
 #ccflags-y += -I$(MAKE_HOME)
 
 obj-m        := $(NAME).o
 
 all:
+	@echo $(GITV)
 	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(XCROSS_HOME) -C $(KERNELDIR) M=$(MAKE_HOME) modules
 
 clean:
