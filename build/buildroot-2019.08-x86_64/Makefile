@@ -11,6 +11,15 @@ OUTPUT_DIR=../../buildroot-2019.08-x86_64
 # ===============================================================
 export CCACHE_DISABLE=1
 
+ifndef GITV
+    GITT := $(shell cd $(HOME); git describe --tags)
+    GITD := $(shell cd $(HOME); git status --short -uno | wc -l)
+    GITV := $(if $(filter $(GITD),0),$(GITT),$(GITT)-dirty)
+endif
+
+ccflags-y += -DGITV=\"$(GITV)\"
+
+
 ### EVR testing machines
 XCROSS_HOME := $(BUILDROOT_HOME)/host/linux-x86_64/x86_64/usr/bin/x86_64-buildroot-linux-gnu-
 KERNELDIR := $(BUILDROOT_HOME)/buildroot-2019.08-x86_64/output/build/linux-4.14.139

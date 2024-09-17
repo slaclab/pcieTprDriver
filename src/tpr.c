@@ -604,9 +604,7 @@ int tpr_probe(struct pci_dev *pcidev, const struct pci_device_id *dev_id) {
    struct TprReg*  tprreg;
    struct pci_device_id *id = (struct pci_device_id *) dev_id;
 
-#ifdef GITV
    printk(KERN_WARNING  MOD_NAME GITV);
-#endif
 
    // We keep device instance number in id->driver_data
    id->driver_data = -1;
