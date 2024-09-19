@@ -1,5 +1,9 @@
  Release Notes for the pcieTprDriver package
 ---------------------------------------------
+R0.6.0   Marcio Donadio (Jul 21, 2023)
+         - From Matt Weaver: Fix bug in kernel driver which hung on corrupt DMA
+           message.
+
 R0.5.1   Bruce Hill (Dec 05, 2022)
          Rework src/load_module.sh to work in different shells.
          Add support for building tpr.ko for each kernel module src installed on host.
