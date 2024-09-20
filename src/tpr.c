@@ -37,6 +37,24 @@
 #include <linux/vmalloc.h>
 #include "tpr.h"
 
+/**
+ * HAVE_UNLOCKED_IOCTL has been dropped in kernel version 5.9.
+ * There is a chance that the removal might be ported back to 5.x.
+ * So if HAVE_UNLOCKED_IOCTL is not defined in kernel v5, we define it.
+ * This also allows backward-compatibility with kernel < 2.6.11.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0) && !defined(HAVE_UNLOCKED_IOCTL)
+#define HAVE_UNLOCKED_IOCTL 1
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)
+  /* 'ioremap_nocache' was deprecated in kernels >= 5.6, so instead we use 'ioremap' which
+  is no-cache by default since kernels 2.6.25. */
+#    define IOREMAP_NO_CACHE(address, size) ioremap(address, size)
+#else /* KERNEL_VERSION < 2.6.25 */
+#    define IOREMAP_NO_CACHE(address, size) ioremap_nocache(address, size)
+#endif
+
 #undef TPRDEBUG
 //#define TPRDEBUG
 #undef TPRDEBUG2
@@ -68,7 +86,14 @@ long    tpr_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long ar
 #else
 int     tpr_ioctl    (struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg);
 #endif
-irqreturn_t tpr_intr (int irq, void *dev_id, struct pt_regs *regs);
+
+// IRQ Handler function declaration
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
+irqreturn_t tpr_intr(int irq, void *dev_id, struct pt_regs *regs);
+#else
+irqreturn_t tpr_intr(int irq, void *dev_id);
+#endif
+
 int     tpr_probe    (struct pci_dev *pcidev, const struct pci_device_id *dev_id);
 void    tpr_remove   (struct pci_dev *pcidev);
 int     tpr_init     (void);
@@ -82,7 +107,9 @@ void    tpr_vmclose  (struct vm_area_struct *vma);
 // vm_operations_struct.fault callback function has a different signature
 // starting at kernel version 4.11. In this new version the struct vm_area_struct
 // in defined as part of the struct vm_fault.
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+vm_fault_t tpr_vmfault  (struct vm_fault *vmf);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 int     tpr_vmfault  (struct vm_fault *vmf);
 #else
 int     tpr_vmfault  (struct vm_area_struct *vma, struct vm_fault *vmf);
@@ -456,7 +483,15 @@ static void tpr_handle_dma(unsigned long arg)
           dev->dmaEvent++;
           mch = (dptr[0]>>0)&((1<<MOD_SHARED)-1);
           if (((dptr[1]<<2)+8)!=EVENT_MSGSZ) {
-            printk(KERN_WARNING  "%s: unexpected event dma size %08x(%08x)...truncating.\n", MOD_NAME, EVENT_MSGSZ,(dptr[1]<<2)+8);
+            if ((dev->dmaErrors%1024)<4) {
+              printk(KERN_WARNING  "%s: unexpected event dma size %08x(%08x)...truncating.\n", MOD_NAME, EVENT_MSGSZ,(dptr[1]<<2)+8);
+              printk(KERN_WARNING  "  dptr %p  buffer %p  next %p\n", 
+                     dptr, next->buffer, ((struct RxBuffer*)next->lh.next)->buffer);
+              printk(KERN_WARNING  "  dmaCount %u  dmaEvent %u  dmaErrors %u\n",
+                     dev->dmaCount, dev->dmaEvent, dev->dmaErrors);
+            }
+            dev->dmaErrors++;
+
             dptr[0] = END_TAG << 16;  // terminate
             break;
           }
@@ -523,7 +558,11 @@ static void tpr_handle_dma(unsigned long arg)
 
 
 // IRQ Handler
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
 irqreturn_t tpr_intr(int irq, void *dev_id, struct pt_regs *regs) {
+#else
+irqreturn_t tpr_intr(int irq, void *dev_id) {
+#endif
   unsigned int stat;
   unsigned int handled=0;
 
@@ -570,6 +609,8 @@ int tpr_probe(struct pci_dev *pcidev, const struct pci_device_id *dev_id) {
    struct tpr_dev* dev;
    struct TprReg*  tprreg;
    struct pci_device_id *id = (struct pci_device_id *) dev_id;
+
+   printk(KERN_WARNING  MOD_NAME GITV);
 
    // We keep device instance number in id->driver_data
    id->driver_data = -1;
@@ -625,6 +666,7 @@ int tpr_probe(struct pci_dev *pcidev, const struct pci_device_id *dev_id) {
    dev->irqNoReq        = 0;
    dev->dmaCount        = 0;
    dev->dmaEvent        = 0;
+   dev->dmaErrors       = 0;
    dev->dmaBsaChan      = 0;
    dev->dmaBsaCtrl      = 0;
 
@@ -691,7 +733,7 @@ int tpr_probe(struct pci_dev *pcidev, const struct pci_device_id *dev_id) {
 
    for ( idx=0; idx < NUMBER_OF_RX_BUFFERS; idx++ ) {
      dev->rxBuffer[idx] = (struct RxBuffer *) vmalloc(sizeof(struct RxBuffer ));
-     if ((dev->rxBuffer[idx]->buffer = pci_alloc_consistent(pcidev, BUF_SIZE, &(dev->rxBuffer[idx]->dma))) == NULL ) {
+     if ((dev->rxBuffer[idx]->buffer = dma_alloc_coherent(&pcidev->dev, BUF_SIZE, &(dev->rxBuffer[idx]->dma),GFP_DMA32|GFP_KERNEL)) == NULL ) {
        printk(KERN_WARNING "%s: Init: unable to allocate rx buffer [%d/%d]. Maj=%i\n",
               MOD_NAME, idx, NUMBER_OF_RX_BUFFERS, dev->major);
        break;
@@ -713,12 +755,16 @@ int tpr_probe(struct pci_dev *pcidev, const struct pci_device_id *dev_id) {
    dev->rxPend = dev->rxFree;
 
    // Request IRQ from OS.
-   if (request_irq(dev->irq, (irq_handler_t) tpr_intr, SA_SHIRQ, MOD_NAME, dev) < 0 ) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24)
+   if (request_irq(dev->irq, (irq_handler_t)tpr_intr, SA_SHIRQ, MOD_NAME, dev) < 0) {
+#else
+   if (request_irq(dev->irq, tpr_intr, SA_SHIRQ, MOD_NAME, dev) < 0) {
+#endif
      printk(KERN_WARNING  "%s: Open: Unable to allocate IRQ. Maj=%i", MOD_NAME, dev->major);
      return (ERROR);
    }
 
-   printk(KERN_ALERT "%s: Init: Driver is loaded. Maj=%i\n", MOD_NAME,dev->major);
+   printk(KERN_ALERT "%s: Init: Driver is loaded. Maj=%i. Bus=%x\n", MOD_NAME,dev->major,pcidev->bus->number);
    return SUCCESS;
 }
 
@@ -776,7 +822,7 @@ void tpr_remove(struct pci_dev *pcidev) {
      //  Free the rx buffer memory.
      for ( idx=0; idx < NUMBER_OF_RX_BUFFERS; idx++ ) {
        if (dev->rxBuffer[idx]->dma != 0) {
-         pci_free_consistent( pcidev, BUF_SIZE, dev->rxBuffer[idx]->buffer, dev->rxBuffer[idx]->dma);
+         dma_free_coherent( &pcidev->dev, BUF_SIZE, dev->rxBuffer[idx]->buffer, dev->rxBuffer[idx]->dma);
          if (dev->rxBuffer[idx]) {
            vfree(dev->rxBuffer[idx]);
          }
@@ -857,7 +903,9 @@ void tpr_vmclose(struct vm_area_struct *vma)
 // vm_operations_struct.fault callback function has a different signature
 // starting at kernel version 4.11. In this new version the struct vm_area_struct
 // in defined as part of the struct vm_fault.
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+vm_fault_t tpr_vmfault(struct vm_fault* vmf)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 int tpr_vmfault(struct vm_fault* vmf)
 #else
 int tpr_vmfault(struct vm_area_struct* vma,
@@ -899,7 +947,7 @@ int allocBar(struct bar_dev* minor, int major, struct pci_dev* pcidev, int bar)
 	  MOD_NAME, bar, major);
 
    // Remap the I/O register block so that it can be safely accessed.
-   minor->reg = ioremap_nocache(minor->baseHdwr, minor->baseLen);
+   minor->reg = IOREMAP_NO_CACHE(minor->baseHdwr, minor->baseLen);
    if (! minor->reg ) {
      printk(KERN_WARNING "%s: Init: Could not remap memory Maj=%i.\n", MOD_NAME,major);
      return (ERROR);
