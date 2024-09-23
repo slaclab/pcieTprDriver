@@ -141,29 +141,29 @@ static struct pci_driver tprDriver = {
 
 // Define interface routines
 struct file_operations tpr_intf = {
-   read:    tpr_read,
-   write:   tpr_write,
+   .read    = tpr_read,
+   .write   = tpr_write,
 #ifdef HAVE_UNLOCKED_IOCTL
-   unlocked_ioctl: tpr_unlocked_ioctl,
+   .unlocked_ioctl = tpr_unlocked_ioctl,
 #else
-   ioctl:   tpr_ioctl,
+   .ioctl   = tpr_ioctl,
 #endif
 #ifdef CONFIG_COMPAT
-  compat_ioctl: tpr_compat_ioctl,
+  .compat_ioctl = tpr_compat_ioctl,
 #endif
 
-   open:    tpr_open,
-   release: tpr_release,
-   poll:    tpr_poll,
-   fasync:  tpr_fasync,
-   mmap:    tpr_mmap,
+   .open     = tpr_open,
+   .release  = tpr_release,
+   .poll     = tpr_poll,
+   .fasync   = tpr_fasync,
+   .mmap     = tpr_mmap,
 };
 
 // Virtual memory operations
 static struct vm_operations_struct tpr_vmops = {
-  open:  tpr_vmopen,
-  close: tpr_vmclose,
-  fault: tpr_vmfault
+  .open   = tpr_vmopen,
+  .close  = tpr_vmclose,
+  .fault  = tpr_vmfault
 };
 
 static int allocBar(struct bar_dev* minor, int major, struct pci_dev* dev, int bar);
