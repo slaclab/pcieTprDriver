@@ -1,7 +1,7 @@
  Release Notes for the pcieTprDriver package
 ---------------------------------------------
 
-pre-release Kukhee Kim (Sep 23, 2024)
+R0.6.1   Kukhee Kim (Sep 23, 2024)
          - align with recent kernel driver updates in the evr-card-g2 project
 
 R0.6.0   Marcio Donadio (Jul 21, 2023)
