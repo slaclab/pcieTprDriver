@@ -7,8 +7,8 @@ XCROSS_HOME :=
 KERNELDIR := /lib/modules/$(KVER)/build
 
 ifndef GITV
-    GITT := $(shell cd $(HOME); git describe --tags)
-    GITD := $(shell cd $(HOME); git status --short -uno | wc -l)
+    GITT := $(shell cd $(MAKE_HOME); git checkout tpr.mod.c; git describe --tags)
+    GITD := $(shell cd $(MAKE_HOME); git status --short -uno | wc -l)
     GITV := $(if $(filter $(GITD),0),$(GITT),$(GITT)-dirty)
 endif
 
