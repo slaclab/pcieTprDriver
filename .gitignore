@@ -9,6 +9,8 @@ tpr.mod.c
 Module.symvers
 modules.order
 *o.cmd
+*.cmd
+*.mod
 build/buildroot-2019.08-x86_64/load_module.sh
 build/buildroot-2019.08-x86_64/tpr.c
 build/buildroot-2019.08-x86_64/tpr.h
